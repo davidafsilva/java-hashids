@@ -160,7 +160,7 @@ public class Hashids {
       global.insert(0, guards[guardIdx]);
       if (minLength > global.length()) {
         guardIdx = (int) ((lotteryId + global.charAt(2)) % guards.length);
-        global.insert(0, guards[guardIdx]);
+        global.append(guards[guardIdx]);
       }
     }
 
