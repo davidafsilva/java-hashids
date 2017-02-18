@@ -179,7 +179,7 @@ public class Hashids {
         paddingLeft -= paddingAlphabet.length;
       } else {
         // calculate the excess
-        final int excess = paddingAlphabet.length + global.length() - minLength;
+        final int excess = minLength - paddingAlphabet.length - global.length();
         // insert the first half
         final int firstHalfStartOffset = excess/2;
         final int firstHalfSize = paddingAlphabet.length - alphabetHalfSize - firstHalfStartOffset;
@@ -241,23 +241,23 @@ public class Hashids {
           }
         }
 
-        // the end of this block
+        if (block.length() > 0) {
+          // create the salt
+          if (saltLeft > 0) {
+            System.arraycopy(currentAlphabet, 0, decodeSalt,
+                alphabet.length - saltLeft, saltLength);
+          }
 
-        // create the salt
-        if (saltLeft > 0) {
-          System.arraycopy(currentAlphabet, 0, decodeSalt,
-              alphabet.length-saltLeft, saltLength);
+          // shuffle the alphabet
+          shuffle(currentAlphabet, decodeSalt);
+
+          // prepend the decoded value
+          final long n = translate(block.toString().toCharArray(), currentAlphabet);
+          decoded = LongStream.concat(decoded, LongStream.of(n));
+
+          // create a new block
+          block = new StringBuilder(length);
         }
-
-        // shuffle the alphabet
-        shuffle(currentAlphabet, decodeSalt);
-
-        // prepend the decoded value
-        final long n = translate(block.toString().toCharArray(), currentAlphabet);
-        decoded = LongStream.concat(decoded, LongStream.of(n));
-
-        // create a new block
-        block = new StringBuilder(length);
       }
     }
 
