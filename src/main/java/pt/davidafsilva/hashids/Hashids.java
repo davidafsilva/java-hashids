@@ -37,6 +37,8 @@ public class Hashids {
   private final char[] guards;
   private final int minLength;
 
+  private final Set<Character> separatorsSet;
+
   private Hashids(final char[] salt, final char[] alphabet, final int minLength) {
     this.minLength = minLength;
     this.salt = salt;
@@ -62,7 +64,7 @@ public class Hashids {
     }
 
     // shuffle the current alphabet
-    tmpAlphabet = shuffle(tmpAlphabet, salt);
+    shuffle(tmpAlphabet, salt);
 
     // check guards
     this.guards = new char[(int) Math.ceil(tmpAlphabet.length / GUARD_THRESHOLD)];
@@ -76,9 +78,10 @@ public class Hashids {
       this.alphabet = Arrays.copyOfRange(tmpAlphabet, guards.length, tmpAlphabet.length);
     }
 
-    System.out.println("alphabet: " + String.valueOf(this.alphabet));
-    System.out.println("separators: " + String.valueOf(this.separators));
-    System.out.println("guards: " + String.valueOf(this.guards));
+    // create the separators set
+    separatorsSet = IntStream.range(0, separators.length)
+        .mapToObj(idx -> separators[idx])
+        .collect(Collectors.toSet());
   }
 
   public static Hashids of(String salt) {
@@ -137,7 +140,7 @@ public class Hashids {
 
           // encode
           final int initialLength = global.length();
-          translate(numbers[idx], lottery, currentAlphabet, global, initialLength);
+          translate(numbers[idx], currentAlphabet, global, initialLength);
 
           // prepend the lottery
           if (idx == 0) {
@@ -164,7 +167,7 @@ public class Hashids {
     // add the necessary padding
     int paddingLeft = minLength - global.length();
     while (paddingLeft > 0) {
-      final char[] paddingAlphabet = shuffle(alphabet, alphabet);
+      final char[] paddingAlphabet = shuffle(currentAlphabet, currentAlphabet);
       final int alphabetHalfSize = paddingAlphabet.length / 2;
       final int initialSize = global.length();
       if (paddingLeft > paddingAlphabet.length) {
@@ -214,12 +217,6 @@ public class Hashids {
     if (hash.length() > 0) {
       final char lottery = hash.charAt(startIdx);
 
-      // create the separators set
-      // FIXME do this at construction
-      final Set<Character> separatorsSet = IntStream.range(0, separators.length)
-          .mapToObj(idx -> separators[idx])
-          .collect(Collectors.toSet());
-
       // create the initial accumulation string
       final int length = hash.length() - guardsIdx.length - 1;
       StringBuilder block = new StringBuilder(length);
@@ -231,32 +228,36 @@ public class Hashids {
       System.arraycopy(salt, 0, decodeSalt, 1, saltLength);
       final int saltLeft = alphabet.length - saltLength - 1;
 
-      // the alphabet
-      char[] currentAlphabet = alphabet;
+      // copy alphabet
+      final char[] currentAlphabet = Arrays.copyOf(alphabet, alphabet.length);
 
       for (int i=startIdx+1; i<hash.length(); i++) {
         if (guardsSet.contains(hash.charAt(i))) continue;
-        if (separatorsSet.contains(hash.charAt(i))) {
-          // the end of this block
-
-          // create the salt
-          if (saltLeft > 0) {
-            System.arraycopy(currentAlphabet, 0, decodeSalt,
-                alphabet.length-saltLeft, saltLength);
+        if (!separatorsSet.contains(hash.charAt(i))) {
+          block.append(hash.charAt(i));
+          // continue if we have not reached the end, yet
+          if (i<hash.length()-1) {
+            continue;
           }
-
-          // shuffle the alphabet
-          currentAlphabet = shuffle(currentAlphabet, decodeSalt);
-
-          // prepend the decoded value
-          final long n = translate(block.toString().toCharArray(), currentAlphabet);
-          decoded = LongStream.concat(LongStream.of(n), decoded);
-
-          // create a new block
-          block = new StringBuilder(length);
         }
 
-        block.append(hash.charAt(i));
+        // the end of this block
+
+        // create the salt
+        if (saltLeft > 0) {
+          System.arraycopy(currentAlphabet, 0, decodeSalt,
+              alphabet.length-saltLeft, saltLength);
+        }
+
+        // shuffle the alphabet
+        shuffle(currentAlphabet, decodeSalt);
+
+        // prepend the decoded value
+        final long n = translate(block.toString().toCharArray(), currentAlphabet);
+        decoded = LongStream.concat(decoded, LongStream.of(n));
+
+        // create a new block
+        block = new StringBuilder(length);
       }
     }
 
@@ -273,8 +274,8 @@ public class Hashids {
   // Utility functions
   // -------------------
 
-  private StringBuilder translate(final long n, final char lottery,
-      final char[] alphabet, final StringBuilder sb, final int start) {
+  private StringBuilder translate(final long n,  final char[] alphabet,
+      final StringBuilder sb, final int start) {
     if (n <= 0) {
       throw new IllegalArgumentException("Invalid number: " + n);
     }
