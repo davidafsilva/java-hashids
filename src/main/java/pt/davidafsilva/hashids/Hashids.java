@@ -1,9 +1,9 @@
 package pt.davidafsilva.hashids;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -35,7 +35,6 @@ public class Hashids {
   private final char[] separators;
   private final char[] salt;
   private final char[] guards;
-  private final Map<Character, Integer> lookupTable;
   private final int minLength;
 
   private Hashids(final char[] salt, final char[] alphabet, final int minLength) {
@@ -80,8 +79,6 @@ public class Hashids {
     System.out.println("alphabet: " + String.valueOf(this.alphabet));
     System.out.println("separators: " + String.valueOf(this.separators));
     System.out.println("guards: " + String.valueOf(this.guards));
-
-    this.lookupTable = createLookupTable(this.alphabet);
   }
 
   public static Hashids of(String salt) {
@@ -123,18 +120,24 @@ public class Hashids {
   public String encode(final long... numbers) {
     if (numbers == null) return null;
 
+    // copy alphabet
+    final char[] currentAlphabet = Arrays.copyOf(alphabet, alphabet.length);
+
     // determine the lottery number
     final long lotteryId = LongStream.range(0, numbers.length)
         .reduce(0, (state, i) -> state + numbers[(int)i] % (i + LOTTERY_MOD));
-    final char lottery = alphabet[(int) (lotteryId % alphabet.length)];
+    final char lottery = currentAlphabet[(int) (lotteryId % currentAlphabet.length)];
 
     // encode each number
     final StringBuilder global = new StringBuilder();
     IntStream.range(0, numbers.length)
         .forEach(idx -> {
+          // derive alphabet
+          deriveNewAlphabet(currentAlphabet, salt, lottery);
+
           // encode
           final int initialLength = global.length();
-          translate(numbers[idx], lottery, global, initialLength);
+          translate(numbers[idx], lottery, currentAlphabet, global, initialLength);
 
           // prepend the lottery
           if (idx == 0) {
@@ -188,29 +191,122 @@ public class Hashids {
     return global.toString();
   }
 
-  private StringBuilder translate(final long n, final char lottery,
-      final StringBuilder sb, final int start) {
-    if (n <= 0) {
-      throw new IllegalArgumentException("Invalid number: " + n);
+  //-------------------------
+  // Decode
+  //-------------------------
+
+  public long[] decode(final String hash) {
+    if (hash == null) return null;
+
+    // create a set of the guards
+    final Set<Character> guardsSet = IntStream.range(0, guards.length)
+        .mapToObj(idx -> guards[idx])
+        .collect(Collectors.toSet());
+    // count the total guards used
+    final int[] guardsIdx = IntStream.range(0, hash.length())
+        .filter(idx -> guardsSet.contains(hash.charAt(idx)))
+        .toArray();
+    // get the start index base on the guards count
+    final int startIdx = guardsIdx.length == 1 || guardsIdx.length == 2 ? guardsIdx[1] : 0;
+
+    LongStream decoded = LongStream.empty();
+    // parse the hash
+    if (hash.length() > 0) {
+      final char lottery = hash.charAt(startIdx);
+
+      // create the separators set
+      // FIXME do this at construction
+      final Set<Character> separatorsSet = IntStream.range(0, separators.length)
+          .mapToObj(idx -> separators[idx])
+          .collect(Collectors.toSet());
+
+      // create the initial accumulation string
+      final int length = hash.length() - guardsIdx.length - 1;
+      StringBuilder block = new StringBuilder(length);
+
+      // create the base salt
+      final char[] decodeSalt = new char[alphabet.length];
+      decodeSalt[0] = lottery;
+      final int saltLength = salt.length >= alphabet.length ? alphabet.length-1 : salt.length;
+      System.arraycopy(salt, 0, decodeSalt, 1, saltLength);
+      final int saltLeft = alphabet.length - saltLength - 1;
+
+      // the alphabet
+      char[] currentAlphabet = alphabet;
+
+      for (int i=startIdx+1; i<hash.length(); i++) {
+        if (guardsSet.contains(hash.charAt(i))) continue;
+        if (separatorsSet.contains(hash.charAt(i))) {
+          // the end of this block
+
+          // create the salt
+          if (saltLeft > 0) {
+            System.arraycopy(currentAlphabet, 0, decodeSalt,
+                alphabet.length-saltLeft, saltLength);
+          }
+
+          // shuffle the alphabet
+          currentAlphabet = shuffle(currentAlphabet, decodeSalt);
+
+          // prepend the decoded value
+          final long n = translate(block.toString().toCharArray(), currentAlphabet);
+          decoded = LongStream.concat(LongStream.of(n), decoded);
+
+          // create a new block
+          block = new StringBuilder(length);
+        }
+
+        block.append(hash.charAt(i));
+      }
     }
 
-    final char[] encodeAlphabet = deriveNewAlphabet(alphabet, salt, lottery);
-
-    long input = n;
-    while (input > 0) {
-      // prepend the chosen char
-      sb.insert(start, encodeAlphabet[(int) (input % encodeAlphabet.length)]);
-
-      // trim the input
-      input = input / encodeAlphabet.length;
+    // validate the hash
+    final long[] decodedValue = decoded.toArray();
+    if (!Objects.equals(hash, encode(decodedValue))) {
+      throw new IllegalArgumentException("invalid hash: " + hash);
     }
 
-    return sb;
+    return decodedValue;
   }
 
   // -------------------
   // Utility functions
   // -------------------
+
+  private StringBuilder translate(final long n, final char lottery,
+      final char[] alphabet, final StringBuilder sb, final int start) {
+    if (n <= 0) {
+      throw new IllegalArgumentException("Invalid number: " + n);
+    }
+
+    long input = n;
+    while (input > 0) {
+      // prepend the chosen char
+      sb.insert(start, alphabet[(int) (input % alphabet.length)]);
+
+      // trim the input
+      input = input / alphabet.length;
+    }
+
+    return sb;
+  }
+
+  private long translate(final char[] hash, final char[] alphabet) {
+    long number = 0;
+
+    final Map<Character, Integer> alphabetMapping = IntStream.range(0, alphabet.length)
+        .mapToObj(idx -> new Object[]{alphabet[idx], idx})
+        .collect(Collectors.groupingBy(arr -> (Character) arr[0],
+            Collectors.mapping(arr -> (Integer) arr[1],
+                Collectors.reducing(null, (a, b) -> a == null ? b : a))));
+
+    for (int i = 0; i < hash.length; ++i) {
+      number += alphabetMapping.get(hash[i]) *
+                (long) Math.pow(alphabet.length, hash.length - i - 1);
+    }
+
+    return number;
+  }
 
   private char[] deriveNewAlphabet(final char[] alphabet, final char[] salt, final char lottery) {
     // create the new salt
@@ -295,12 +391,5 @@ public class Hashids {
       alphabet[i] = tmp;
     }
     return alphabet;
-  }
-
-  private Map<Character, Integer> createLookupTable(final char[] alphabet) {
-    return IntStream.range(0, alphabet.length).collect(
-        () -> new HashMap<>(alphabet.length),
-        (map, i) -> map.put(alphabet[i], i),
-        HashMap::putAll);
   }
 }
