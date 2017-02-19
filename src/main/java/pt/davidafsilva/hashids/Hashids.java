@@ -10,12 +10,38 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 /**
- * TODO: change me
+ * Implementation of the <a href="http://hashids.org/">Hashids</a> protocol.
+ * The algorithm has the following properties:
+ * <li>
+ * <li>Generation of short, unique, case-sensitive and non-sequential hashes</li>
+ * <li>Hashes of natural numbers</li>
+ * <li>Additional entropy through salt usage</li>
+ * <li>Configurable hash size</li>
+ * <li>Deterministic hash computation given the same input/parametrization</li>
+ * </li>
+ *
+ * The underlying implementation shall be, in most cases, compatible/interchangeable with the
+ * <a href="https://github.com/ivanakimov/hashids.js">standard implementation</a> provided by the
+ * author of the protocol. Compatibility with other implementations are granted as long as they
+ * cope with the standard implementation.
  *
  * @author david
  */
-public class Hashids {
+public final class Hashids {
 
+  // the default instance
+  private static final class DefaultInstanceHolder {
+
+    private static final Hashids DEFAULT_INSTANCE = newInstance(new char[0]);
+  }
+
+  // algorithm constant definitions
+  private static final int LOTTERY_MOD = 100;
+  private static final double GUARD_THRESHOLD = 12;
+  private static final double SEPARATOR_THRESHOLD = 3.5;
+  private static final int MIN_ALPHABET_LENGTH = 16;
+
+  // algorithm defaults
   private static final char[] DEFAULT_ALPHABET = {
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
       'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
@@ -26,19 +52,24 @@ public class Hashids {
   private static final char[] DEFAULT_SEPARATORS = {
       'c', 'f', 'h', 'i', 's', 't', 'u', 'C', 'F', 'H', 'I', 'S', 'T', 'U'
   };
-  private static final int LOTTERY_MOD = 100;
-  private static final double GUARD_THRESHOLD = 12;
-  private static final double SEPARATOR_THRESHOLD = 3.5;
-  private static final int MIN_ALPHABET_LENGTH = 16;
 
+  // algorithm properties
   private final char[] alphabet;
   private final char[] separators;
   private final char[] salt;
   private final char[] guards;
   private final int minLength;
 
+  // auxiliary structure for fast reads
   private final Set<Character> separatorsSet;
 
+  /**
+   * Creates a new instance of the algorithm with the given configuration.
+   *
+   * @param salt      the salt that shall be used for entropy
+   * @param alphabet  the alphabet that the algorithm must follow while computing hashes
+   * @param minLength the minimum length of the hashes produced by the algorithm
+   */
   private Hashids(final char[] salt, final char[] alphabet, final int minLength) {
     this.minLength = minLength;
     this.salt = Arrays.copyOf(salt, salt.length);
@@ -50,7 +81,8 @@ public class Hashids {
     char[] tmpAlphabet = validateAndFilterAlphabet(alphabet, tmpSeparators);
 
     // check separator threshold
-    if (tmpSeparators.length == 0 || (tmpAlphabet.length/tmpSeparators.length) > SEPARATOR_THRESHOLD) {
+    if (tmpSeparators.length == 0 ||
+        (tmpAlphabet.length / tmpSeparators.length) > SEPARATOR_THRESHOLD) {
       final int minSeparatorsSize = (int) Math.ceil(tmpAlphabet.length / SEPARATOR_THRESHOLD);
       // check minimum size of separators
       if (minSeparatorsSize > tmpSeparators.length) {
@@ -58,9 +90,9 @@ public class Hashids {
         final int missingSeparators = minSeparatorsSize - tmpSeparators.length;
         tmpSeparators = Arrays.copyOf(tmpSeparators, tmpSeparators.length + missingSeparators);
         System.arraycopy(tmpAlphabet, 0, tmpSeparators,
-            tmpSeparators.length-missingSeparators, missingSeparators);
+            tmpSeparators.length - missingSeparators, missingSeparators);
         System.arraycopy(tmpAlphabet, 0, tmpSeparators,
-            tmpSeparators.length-missingSeparators, missingSeparators);
+            tmpSeparators.length - missingSeparators, missingSeparators);
         tmpAlphabet = Arrays.copyOfRange(tmpAlphabet, missingSeparators, tmpAlphabet.length);
       }
     }
@@ -86,35 +118,130 @@ public class Hashids {
         .collect(Collectors.toSet());
   }
 
-  public static Hashids of(String salt) {
-    return of(salt.toCharArray(), DEFAULT_ALPHABET, -1);
+  //-------------------------
+  // Static factory methods
+  //-------------------------
+
+  /**
+   * Returns the default instance of the algorithm which uses the following parameters:
+   * <table summary="Algorithm parametrization">
+   * <tr>
+   * <th>Parameter</th>
+   * <th>Value</th>
+   * </tr>
+   * <tr>
+   * <td><b>salt</b></td>
+   * <td>--</td>
+   * </tr>
+   * <tr>
+   * <td><b>alphabet</b></td>
+   * <td>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890</td>
+   * </tr>
+   * <tr>
+   * <td><b>minLength</b></td>
+   * <td>--</td>
+   * </tr>
+   * </table>
+   *
+   * @return the default algorithm instance
+   */
+  public static Hashids getInstance() {
+    return DefaultInstanceHolder.DEFAULT_INSTANCE;
   }
 
-  public static Hashids of(char[] salt) {
-    return of(salt, DEFAULT_ALPHABET, -1);
+  /**
+   * Returns a new instance of the algorithm with the given salt and the {@link #DEFAULT_ALPHABET
+   * default alphabet} with no minimum hash length.
+   *
+   * @param salt the salt to be used as entropy for the algorithm
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final String salt) {
+    return newInstance(salt.toCharArray(), DEFAULT_ALPHABET, -1);
   }
 
-  public static Hashids of(String salt, String alphabet) {
-    return of(salt.toCharArray(), alphabet.toCharArray(), -1);
+  /**
+   * Returns a new instance of the algorithm with the given salt and the {@link #DEFAULT_ALPHABET
+   * default alphabet} with no minimum hash length.
+   *
+   * @param salt the salt to be used as entropy for the algorithm
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final char[] salt) {
+    return newInstance(salt, DEFAULT_ALPHABET, -1);
   }
 
-  public static Hashids of(char[] salt, char[] alphabet) {
-    return of(salt, alphabet, -1);
+  /**
+   * Returns a new instance of the algorithm with the given salt and the alphabet and no minimum
+   * hash length.
+   *
+   * @param salt     the salt to be used as entropy for the algorithm
+   * @param alphabet the alphabet to be used for the hash generation
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final String salt, final String alphabet) {
+    return newInstance(salt.toCharArray(), alphabet.toCharArray(), -1);
   }
 
-  public static Hashids of(String salt, int minLength) {
-    return of(salt.toCharArray(), DEFAULT_ALPHABET, minLength);
+  /**
+   * Returns a new instance of the algorithm with the given salt and the alphabet and no minimum
+   * hash length.
+   *
+   * @param salt     the salt to be used as entropy for the algorithm
+   * @param alphabet the alphabet to be used for the hash generation
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final char[] salt, final char[] alphabet) {
+    return newInstance(salt, alphabet, -1);
   }
 
-  public static Hashids of(char[] salt, int minLength) {
-    return of(salt, DEFAULT_ALPHABET, minLength);
+  /**
+   * Returns a new instance of the algorithm with the given salt and the {@link #DEFAULT_ALPHABET
+   * default alphabet} with {@code minLength} as the minimum hash length.
+   *
+   * @param salt      the salt to be used as entropy for the algorithm
+   * @param minLength the minimum hash length
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final String salt, final int minLength) {
+    return newInstance(salt.toCharArray(), DEFAULT_ALPHABET, minLength);
   }
 
-  public static Hashids of(String salt, String alphabet, int minLength) {
-    return of(salt.toCharArray(), alphabet.toCharArray(), minLength);
+  /**
+   * Returns a new instance of the algorithm with the given salt and the {@link #DEFAULT_ALPHABET
+   * default alphabet} with {@code minLength} as the minimum hash length.
+   *
+   * @param salt      the salt to be used as entropy for the algorithm
+   * @param minLength the minimum hash length
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final char[] salt, final int minLength) {
+    return newInstance(salt, DEFAULT_ALPHABET, minLength);
   }
 
-  public static Hashids of(char[] salt, char[] alphabet, int minLength) {
+  /**
+   * Returns a new instance of the algorithm with the given salt and the alphabet and
+   * {@code minLength} as the minimum hash length.
+   *
+   * @param salt      the salt to be used as entropy for the algorithm
+   * @param alphabet  the alphabet to be used for the hash generation
+   * @param minLength the minimum hash length
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final String salt, final String alphabet, final int minLength) {
+    return newInstance(salt.toCharArray(), alphabet.toCharArray(), minLength);
+  }
+
+  /**
+   * Returns a new instance of the algorithm with the given salt and the alphabet and
+   * {@code minLength} as the minimum hash length.
+   *
+   * @param salt      the salt to be used as entropy for the algorithm
+   * @param alphabet  the alphabet to be used for the hash generation
+   * @param minLength the minimum hash length
+   * @return a new instance of the algorithm
+   */
+  public static Hashids newInstance(final char[] salt, final char[] alphabet, final int minLength) {
     return new Hashids(salt, alphabet, minLength);
   }
 
@@ -122,15 +249,25 @@ public class Hashids {
   // Encode
   //-------------------------
 
+  /**
+   * Encodes the given {@code numbers} based on this instance configuration.
+   *
+   * @param numbers the numbers to be encoded
+   * @return the resultant hash of the encoding of {@code numbers}, {@code null} if {@code numbers}
+   * is {@code null}.
+   * @throws IllegalArgumentException if any of the numbers is not supported
+   */
   public String encode(final long... numbers) {
-    if (numbers == null) return null;
+    if (numbers == null) {
+      return null;
+    }
 
     // copy alphabet
     final char[] currentAlphabet = Arrays.copyOf(alphabet, alphabet.length);
 
     // determine the lottery number
     final long lotteryId = LongStream.range(0, numbers.length)
-        .reduce(0, (state, i) -> state + numbers[(int)i] % (i + LOTTERY_MOD));
+        .reduce(0, (state, i) -> state + numbers[(int) i] % (i + LOTTERY_MOD));
     final char lottery = currentAlphabet[(int) (lotteryId % currentAlphabet.length)];
 
     // encode each number
@@ -184,8 +321,8 @@ public class Hashids {
       } else {
         // calculate the excess
         final int excess = currentAlphabet.length + global.length() - minLength;
-        final int firstHalfLength = alphabetHalfSize - excess/2;
-        final int secondHalfStartOffset = alphabetHalfSize + (alphabetHalfSize-firstHalfLength);
+        final int firstHalfLength = alphabetHalfSize - excess / 2;
+        final int secondHalfStartOffset = alphabetHalfSize + (alphabetHalfSize - firstHalfLength);
         final int secondHalfLength = (paddingLeft - firstHalfLength);
 
         global.insert(0, currentAlphabet, secondHalfStartOffset, secondHalfLength);
@@ -202,8 +339,19 @@ public class Hashids {
   // Decode
   //-------------------------
 
+  /**
+   * Decodes the given {@code hash} into his original numeric representation based on this instance
+   * configuration.
+   *
+   * @param hash the hash to be decoded
+   * @return an array of long values with each numeric number present in the hash, {@code null} if
+   * {@code numbers} is {@code null}.
+   * @throws IllegalArgumentException if the hash is invalid.
+   */
   public long[] decode(final String hash) {
-    if (hash == null) return null;
+    if (hash == null) {
+      return null;
+    }
 
     // create a set of the guards
     final Set<Character> guardsSet = IntStream.range(0, guards.length)
@@ -216,7 +364,7 @@ public class Hashids {
     // get the start/end index base on the guards count
     final int startIdx, endIdx;
     if (guardsIdx.length > 0) {
-      startIdx = guardsIdx[0]+1;
+      startIdx = guardsIdx[0] + 1;
       endIdx = guardsIdx.length > 1 ? guardsIdx[1] : hash.length();
     } else {
       startIdx = 0;
@@ -235,18 +383,18 @@ public class Hashids {
       // create the base salt
       final char[] decodeSalt = new char[alphabet.length];
       decodeSalt[0] = lottery;
-      final int saltLength = salt.length >= alphabet.length ? alphabet.length-1 : salt.length;
+      final int saltLength = salt.length >= alphabet.length ? alphabet.length - 1 : salt.length;
       System.arraycopy(salt, 0, decodeSalt, 1, saltLength);
       final int saltLeft = alphabet.length - saltLength - 1;
 
       // copy alphabet
       final char[] currentAlphabet = Arrays.copyOf(alphabet, alphabet.length);
 
-      for (int i=startIdx+1; i<endIdx; i++) {
+      for (int i = startIdx + 1; i < endIdx; i++) {
         if (!separatorsSet.contains(hash.charAt(i))) {
           block.append(hash.charAt(i));
           // continue if we have not reached the end, yet
-          if (i<endIdx-1) {
+          if (i < endIdx - 1) {
             continue;
           }
         }
@@ -284,7 +432,7 @@ public class Hashids {
   // Utility functions
   // -------------------
 
-  private StringBuilder translate(final long n,  final char[] alphabet,
+  private StringBuilder translate(final long n, final char[] alphabet,
       final StringBuilder sb, final int start) {
     if (n <= 0) {
       throw new IllegalArgumentException("Invalid number: " + n);
@@ -313,7 +461,7 @@ public class Hashids {
 
     for (int i = 0; i < hash.length; ++i) {
       number += alphabetMapping.get(hash[i]) *
-                (long) Math.pow(alphabet.length, hash.length - i - 1);
+          (long) Math.pow(alphabet.length, hash.length - i - 1);
     }
 
     return number;
@@ -363,7 +511,9 @@ public class Hashids {
                 "index %d", i));
           }
           final Character c = alphabet[i];
-          if (!invalid.contains(c)) seen.add(c);
+          if (!invalid.contains(c)) {
+            seen.add(c);
+          }
         });
 
     // check if got the same untouched alphabet
@@ -374,7 +524,9 @@ public class Hashids {
     // create a new alphabet without the duplicates
     final char[] uniqueAlphabet = new char[seen.size()];
     int idx = 0;
-    for (char c : seen) uniqueAlphabet[idx++] = c;
+    for (char c : seen) {
+      uniqueAlphabet[idx++] = c;
+    }
     return uniqueAlphabet;
   }
 
