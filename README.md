@@ -33,3 +33,10 @@ final Hashids hashids = Hashids.newInstance("my awesome salt", "0123456789abcdef
 final String encoded = hashids.encode(1,2,3,4,5); // encoded = "a924d54a937624c20519fb6de82b835b"
 final long[] decoded = hashids.decode(encoded);   // decoded = [1, 2, 3, 4, 5]
 ```
+
+### Encode hex representation (vs long)
+```java
+final Hashids hashids = Hashids.newInstance("my awesome salt");
+final String encoded = hashids.encodeHex("507f1f77bcf86cd799439011"); // encoded = "y42LW46J9lhq3Xq9XMly"
+final String decoded = hashids.decodeHex(encoded);   // decoded = 507f1f77bcf86cd799439011
+```

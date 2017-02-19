@@ -1,10 +1,13 @@
 package pt.davidafsilva.hashids;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -40,6 +43,7 @@ public final class Hashids {
   private static final double GUARD_THRESHOLD = 12;
   private static final double SEPARATOR_THRESHOLD = 3.5;
   private static final int MIN_ALPHABET_LENGTH = 16;
+  private static final Pattern HEX_VALUES_PATTERN = Pattern.compile("[\\w\\W]{1,12}");
 
   // algorithm defaults
   private static final char[] DEFAULT_ALPHABET = {
@@ -249,6 +253,32 @@ public final class Hashids {
   // Encode
   //-------------------------
 
+
+  /**
+   * Encodes the given numbers in hexadecimal format based on this instance configuration.
+   *
+   * @param hexNumbers the numbers in hex to be encoded
+   * @return the resultant hash of the encoding of {@code hexNumbers}, {@code null} if {@code
+   * numbers}
+   * is {@code null}.
+   * @throws IllegalArgumentException if any of the numbers is not supported
+   */
+  public String encodeHex(final String hexNumbers) {
+    // remove the prefix, if present
+    final String hex = hexNumbers.startsWith("0x") || hexNumbers.startsWith("0X") ?
+        hexNumbers.substring(2) : hexNumbers;
+
+    // get the associated long value and encode it
+    LongStream values = LongStream.empty();
+    final Matcher matcher = HEX_VALUES_PATTERN.matcher(hex);
+    while (matcher.find()) {
+      final long value = new BigInteger("1" + matcher.group(), 16).longValue();
+      values = LongStream.concat(values, LongStream.of(value));
+    }
+
+    return encode(values.toArray());
+  }
+
   /**
    * Encodes the given {@code numbers} based on this instance configuration.
    *
@@ -267,7 +297,13 @@ public final class Hashids {
 
     // determine the lottery number
     final long lotteryId = LongStream.range(0, numbers.length)
-        .reduce(0, (state, i) -> state + numbers[(int) i] % (i + LOTTERY_MOD));
+        .reduce(0, (state, i) -> {
+          final long number = numbers[(int) i];
+          if (number < 0) {
+            throw new IllegalArgumentException("invalid number: " + number);
+          }
+          return state + number % (i + LOTTERY_MOD);
+        });
     final char lottery = currentAlphabet[(int) (lotteryId % currentAlphabet.length)];
 
     // encode each number
@@ -338,6 +374,23 @@ public final class Hashids {
   //-------------------------
   // Decode
   //-------------------------
+
+  /**
+   * Decodes the given {@code hash} into his original hexadecimal representation based on this
+   * instance configuration.
+   *
+   * @param hash the hash to be decoded
+   * @return the original hexadecimal representation of the hash values with each numeric number
+   * present in the hash, {@code null} if {@code numbers} is {@code null}.
+   * @throws IllegalArgumentException if the hash is invalid.
+   */
+  public String decodeHex(final String hash) {
+    final StringBuilder sb = new StringBuilder();
+    Arrays.stream(decode(hash))
+        .mapToObj(Long::toHexString)
+        .forEach(hex -> sb.append(hex, 1, hex.length()));
+    return sb.toString();
+  }
 
   /**
    * Decodes the given {@code hash} into his original numeric representation based on this instance
