@@ -57,8 +57,10 @@ public class Hashids {
         // fill separators from alphabet
         final int missingSeparators = minSeparatorsSize - tmpSeparators.length;
         tmpSeparators = Arrays.copyOf(tmpSeparators, tmpSeparators.length + missingSeparators);
-        System.arraycopy(tmpAlphabet, 0, tmpSeparators, tmpSeparators.length-missingSeparators, missingSeparators);
-        System.arraycopy(tmpAlphabet, 0, tmpSeparators, tmpSeparators.length-missingSeparators, missingSeparators);
+        System.arraycopy(tmpAlphabet, 0, tmpSeparators,
+            tmpSeparators.length-missingSeparators, missingSeparators);
+        System.arraycopy(tmpAlphabet, 0, tmpSeparators,
+            tmpSeparators.length-missingSeparators, missingSeparators);
         tmpAlphabet = Arrays.copyOfRange(tmpAlphabet, missingSeparators, tmpAlphabet.length);
       }
     }
@@ -211,8 +213,15 @@ public class Hashids {
     final int[] guardsIdx = IntStream.range(0, hash.length())
         .filter(idx -> guardsSet.contains(hash.charAt(idx)))
         .toArray();
-    // get the start index base on the guards count
-    final int startIdx = guardsIdx.length == 1 || guardsIdx.length == 2 ? guardsIdx[1] : 0;
+    // get the start/end index base on the guards count
+    final int startIdx, endIdx;
+    if (guardsIdx.length > 0) {
+      startIdx = guardsIdx[0]+1;
+      endIdx = guardsIdx.length > 1 ? guardsIdx[1] : hash.length();
+    } else {
+      startIdx = 0;
+      endIdx = hash.length();
+    }
 
     LongStream decoded = LongStream.empty();
     // parse the hash
@@ -233,12 +242,11 @@ public class Hashids {
       // copy alphabet
       final char[] currentAlphabet = Arrays.copyOf(alphabet, alphabet.length);
 
-      for (int i=startIdx+1; i<hash.length(); i++) {
-        if (guardsSet.contains(hash.charAt(i))) continue;
+      for (int i=startIdx+1; i<endIdx; i++) {
         if (!separatorsSet.contains(hash.charAt(i))) {
           block.append(hash.charAt(i));
           // continue if we have not reached the end, yet
-          if (i<hash.length()-1) {
+          if (i<endIdx-1) {
             continue;
           }
         }
