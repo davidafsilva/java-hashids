@@ -434,18 +434,18 @@ public final class Hashids {
 
   private StringBuilder translate(final long n, final char[] alphabet,
       final StringBuilder sb, final int start) {
-    if (n <= 0) {
+    if (n < 0) {
       throw new IllegalArgumentException("Invalid number: " + n);
     }
 
     long input = n;
-    while (input > 0) {
+    do {
       // prepend the chosen char
       sb.insert(start, alphabet[(int) (input % alphabet.length)]);
 
       // trim the input
       input = input / alphabet.length;
-    }
+    } while (input > 0);
 
     return sb;
   }
