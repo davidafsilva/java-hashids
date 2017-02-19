@@ -41,10 +41,10 @@ public class Hashids {
 
   private Hashids(final char[] salt, final char[] alphabet, final int minLength) {
     this.minLength = minLength;
-    this.salt = salt;
+    this.salt = Arrays.copyOf(salt, salt.length);
 
     // filter and shuffle separators
-    char[] tmpSeparators = shuffle(filterSeparators(DEFAULT_SEPARATORS, alphabet), salt);
+    char[] tmpSeparators = shuffle(filterSeparators(DEFAULT_SEPARATORS, alphabet), this.salt);
 
     // validate and filter the alphabet
     char[] tmpAlphabet = validateAndFilterAlphabet(alphabet, tmpSeparators);
@@ -64,7 +64,7 @@ public class Hashids {
     }
 
     // shuffle the current alphabet
-    shuffle(tmpAlphabet, salt);
+    shuffle(tmpAlphabet, this.salt);
 
     // check guards
     this.guards = new char[(int) Math.ceil(tmpAlphabet.length / GUARD_THRESHOLD)];
@@ -167,26 +167,28 @@ public class Hashids {
     // add the necessary padding
     int paddingLeft = minLength - global.length();
     while (paddingLeft > 0) {
-      final char[] paddingAlphabet = shuffle(currentAlphabet, currentAlphabet);
-      final int alphabetHalfSize = paddingAlphabet.length / 2;
+      shuffle(currentAlphabet, Arrays.copyOf(currentAlphabet, currentAlphabet.length));
+
+      final int alphabetHalfSize = currentAlphabet.length / 2;
       final int initialSize = global.length();
-      if (paddingLeft > paddingAlphabet.length) {
+      if (paddingLeft > currentAlphabet.length) {
         // entire alphabet with the current encoding in the middle of it
-        int offset = alphabetHalfSize + paddingAlphabet.length % 2 == 0 ? 0 : 1;
-        global.insert(0, paddingAlphabet, alphabetHalfSize, offset);
-        global.insert(offset + initialSize, paddingAlphabet, 0, alphabetHalfSize);
+        int offset = alphabetHalfSize + (currentAlphabet.length % 2 == 0 ? 0 : 1);
+
+        global.insert(0, currentAlphabet, alphabetHalfSize, offset);
+        global.insert(offset + initialSize, currentAlphabet, 0, alphabetHalfSize);
         // decrease the padding left
-        paddingLeft -= paddingAlphabet.length;
+        paddingLeft -= currentAlphabet.length;
       } else {
         // calculate the excess
-        final int excess = minLength - paddingAlphabet.length - global.length();
-        // insert the first half
-        final int firstHalfStartOffset = excess/2;
-        final int firstHalfSize = paddingAlphabet.length - alphabetHalfSize - firstHalfStartOffset;
-        global.insert(0, paddingAlphabet, firstHalfStartOffset, firstHalfSize);
-        // insert the second half
-        final int secondHalfEndOffset = minLength - firstHalfSize - initialSize;
-        global.insert(firstHalfSize + initialSize, paddingAlphabet, 0, secondHalfEndOffset);
+        final int excess = currentAlphabet.length + global.length() - minLength;
+        final int firstHalfLength = alphabetHalfSize - excess/2;
+        final int secondHalfStartOffset = alphabetHalfSize + (alphabetHalfSize-firstHalfLength);
+        final int secondHalfLength = (paddingLeft - firstHalfLength);
+
+        global.insert(0, currentAlphabet, secondHalfStartOffset, secondHalfLength);
+        global.insert(secondHalfLength + initialSize, currentAlphabet, 0, firstHalfLength);
+
         paddingLeft = 0;
       }
     }
@@ -358,7 +360,7 @@ public class Hashids {
 
     // check if got the same untouched alphabet
     if (seen.size() == alphabet.length) {
-      return alphabet;
+      return Arrays.copyOf(alphabet, alphabet.length);
     }
 
     // create a new alphabet without the duplicates
