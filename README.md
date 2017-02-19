@@ -37,6 +37,6 @@ final long[] decoded = hashids.decode(encoded);   // decoded = [1, 2, 3, 4, 5]
 ### Encode hex representation (vs long)
 ```java
 final Hashids hashids = Hashids.newInstance("my awesome salt");
-final String encoded = hashids.encodeHex("507f1f77bcf86cd799439011"); // encoded = "y42LW46J9lhq3Xq9XMly"
-final String decoded = hashids.decodeHex(encoded);   // decoded = 507f1f77bcf86cd799439011
+final String encoded = hashids.encodeHex("507f1f77bcf86cd799439011"); // encoded = "R2qnd2vkOJTXm7XV7yq4"
+final String decoded = hashids.decodeHex(encoded);   // decoded = "507f1f77bcf86cd799439011"
 ```
