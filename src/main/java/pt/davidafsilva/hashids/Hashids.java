@@ -403,7 +403,7 @@ public final class Hashids {
           // create the salt
           if (saltLeft > 0) {
             System.arraycopy(currentAlphabet, 0, decodeSalt,
-                alphabet.length - saltLeft, saltLength);
+                alphabet.length - saltLeft, saltLeft);
           }
 
           // shuffle the alphabet
