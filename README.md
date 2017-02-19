@@ -16,20 +16,20 @@ which support a variety of parameters.
 ### Instantiation with a salt
 ```java
 final Hashids hashids = Hashids.newInstance("my awesome salt");
-final String encoded = hashids.encode(1,2,3,4,5);
-final long[] decoded = hashids.decode(encoded);
+final String encoded = hashids.encode(1,2,3,4,5); // encoded = "lmh8S9cQuk"
+final long[] decoded = hashids.decode(encoded);   // decoded = [1, 2, 3, 4, 5]
 ```
 
 ### Instantiation with a salt and a custom alphabet
 ```java
 final Hashids hashids = Hashids.newInstance("my awesome salt", "0123456789abcdef");
-final String encoded = hashids.encode(1,2,3,4,5);
-final long[] decoded = hashids.decode(encoded);
+final String encoded = hashids.encode(1,2,3,4,5); // encoded = "24c20519fb"
+final long[] decoded = hashids.decode(encoded);   // decoded = [1, 2, 3, 4, 5]
 ```
 
 ### Instantiation with a salt, custom alphabet and minimum hash length
 ```java
 final Hashids hashids = Hashids.newInstance("my awesome salt", "0123456789abcdef", 32);
-final String encoded = hashids.encode(1,2,3,4,5);
-final long[] decoded = hashids.decode(encoded);
+final String encoded = hashids.encode(1,2,3,4,5); // encoded = "a924d54a937624c20519fb6de82b835b"
+final long[] decoded = hashids.decode(encoded);   // decoded = [1, 2, 3, 4, 5]
 ```
