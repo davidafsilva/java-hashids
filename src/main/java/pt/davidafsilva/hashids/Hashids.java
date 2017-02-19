@@ -22,7 +22,7 @@ import java.util.stream.LongStream;
  *
  * The underlying implementation shall be, in most cases, compatible/interchangeable with the
  * <a href="https://github.com/ivanakimov/hashids.js">standard implementation</a> provided by the
- * author of the protocol. Compatibility with other implementations are granted as long as they
+ * author of the protocol. Compatibility with other implementations is expected as long as they
  * cope with the standard implementation.
  *
  * @author david
