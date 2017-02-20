@@ -30,7 +30,7 @@ import java.util.stream.LongStream;
  *
  * @author david
  */
-public final class Hashids {
+public class Hashids {
 
   // the default instance
   private static final class DefaultInstanceHolder {
