@@ -23,13 +23,13 @@ public class HashidsTest extends AbstractHashidsTest {
   @Parameterized.Parameters(name = "{index}: {0}")
   public static Collection<Object[]> data() {
     // generate a 1-to-32 sized arrays
-    final List<int[]> input = new ArrayList<>();
-    for (int i = 0; i < 32; i++) {
+    final List<long[]> input = new ArrayList<>();
+    for (long i = 0; i < 32; i++) {
       if (input.isEmpty()) {
-        input.add(new int[]{i});
+        input.add(new long[]{i});
       } else {
-        final int[] prev = input.get(input.size() - 1);
-        final int[] curr = Arrays.copyOf(prev, prev.length + 1);
+        final long[] prev = input.get(input.size() - 1);
+        final long[] curr = Arrays.copyOf(prev, prev.length + 1);
         curr[prev.length] = i;
         input.add(curr);
       }
