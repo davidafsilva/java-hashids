@@ -17,8 +17,3 @@ cache:
   directories:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
-
-notifications:
-  email: true
-    on_success: change
-    on_failure: change
