@@ -1,7 +1,7 @@
-# java-hashids
+# java-hashids [![Build Status](https://travis-ci.org/davidafsilva/java-hashids.svg?branch=master)](https://travis-ci.org/davidafsilva/java-hashids)
 Implementation of the Hashids hashing protocol.
 
-The underlying implementation shall be, in most cases, compatible/interchangeable with the
+The underlying implementation shall be, in most cases (working on it!), compatible/interchangeable with the
 [standard implementation](https://github.com/ivanakimov/hashids.js) provided by the author of the 
 protocol.
 Compatibility with other implementations is expected as long as they cope with the standard 
