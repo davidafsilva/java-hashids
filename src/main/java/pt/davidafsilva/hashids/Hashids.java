@@ -357,9 +357,9 @@ public class Hashids {
       } else {
         // calculate the excess
         final int excess = currentAlphabet.length + global.length() - minLength;
-        final int firstHalfLength = alphabetHalfSize - excess / 2;
-        final int secondHalfStartOffset = alphabetHalfSize + (alphabetHalfSize - firstHalfLength);
-        final int secondHalfLength = (paddingLeft - firstHalfLength);
+        final int secondHalfStartOffset = alphabetHalfSize + Math.floorDiv(excess, 2);
+        final int secondHalfLength = currentAlphabet.length - secondHalfStartOffset;
+        final int firstHalfLength = paddingLeft - secondHalfLength;
 
         global.insert(0, currentAlphabet, secondHalfStartOffset, secondHalfLength);
         global.insert(secondHalfLength + initialSize, currentAlphabet, 0, firstHalfLength);
