@@ -28,14 +28,14 @@ public class HashidsTest {
   public void negativeInput() {
     thrown.expect(IllegalArgumentException.class);
     thrown.expectMessage("invalid number: -1");
-    Hashids.getInstance().encode(-1);
+    Hashids.newInstance("salt".toCharArray(), 32).encode(-1);
   }
 
   @Test
   public void invalidAlphabetLength() {
     thrown.expect(IllegalArgumentException.class);
     thrown.expectMessage("alphabet must contain at least 16 unique characters: 6");
-    Hashids.newInstance("salt", "123456");
+    Hashids.newInstance("salt".toCharArray(), "123456".toCharArray());
   }
 
   @Test

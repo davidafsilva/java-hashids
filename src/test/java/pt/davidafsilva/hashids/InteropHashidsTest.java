@@ -76,7 +76,7 @@ public class InteropHashidsTest extends AbstractHashidsTest {
     // with salt, no custom alphabet, with minLength
     algorithms.add(new Supplier<?>[]{
         () -> "Salt|NoAlphabet|MinLength",
-        () -> Hashids.newInstance("my awesome salt".toCharArray(), Hashids.DEFAULT_ALPHABET, 32),
+        () -> Hashids.newInstance("my awesome salt", 32),
         () -> getJsAlgorithm("my awesome salt", null, 32)
     });
     // with salt, with custom alphabet, with minLength
