@@ -495,10 +495,6 @@ public class Hashids {
 
   private StringBuilder translate(final long n, final char[] alphabet,
       final StringBuilder sb, final int start) {
-    if (n < 0) {
-      throw new IllegalArgumentException("Invalid number: " + n);
-    }
-
     long input = n;
     do {
       // prepend the chosen char
