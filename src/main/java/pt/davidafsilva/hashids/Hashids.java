@@ -573,11 +573,6 @@ public class Hashids {
           }
         });
 
-    // check if got the same untouched alphabet
-    if (seen.size() == alphabet.length) {
-      return Arrays.copyOf(alphabet, alphabet.length);
-    }
-
     // create a new alphabet without the duplicates
     final char[] uniqueAlphabet = new char[seen.size()];
     int idx = 0;
