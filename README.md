@@ -1,5 +1,5 @@
 # java-hashids [![Build Status](https://travis-ci.org/davidafsilva/java-hashids.svg?branch=master)](https://travis-ci.org/davidafsilva/java-hashids)
-Implementation of the Hashids hashing protocol.
+Implementation of the [Hashids](http://hashids.org) hashing protocol, which defines how to generate short, unique, non-sequential identifiers (hashes) from numbers.
 
 The underlying implementation is compatible/interchangeable with the [JavaScript implementation](https://github.com/ivanakimov/hashids.js) provided by the author of the protocol.
 Compatibility with other implementations is expected as long as they cope with the JavaScript implementation as well.
