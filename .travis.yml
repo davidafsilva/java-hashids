@@ -10,7 +10,7 @@ branches:
   - master
 
 after_success:
-  - ./gradlew jacocoTestReport coveralls
+  - gradle jacocoTestReport coveralls
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
