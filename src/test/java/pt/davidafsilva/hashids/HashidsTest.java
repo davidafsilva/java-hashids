@@ -1,113 +1,60 @@
 package pt.davidafsilva.hashids;
 
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
+import org.junit.rules.ExpectedException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author david
  */
-@RunWith(Parameterized.class)
-public class HashidsTest extends AbstractHashidsTest {
+public class HashidsTest {
 
-  @Parameterized.Parameters(name = "{index}: {0}")
-  public static Collection<Object[]> data() {
-    // generate a 1-to-32 sized arrays
-    final List<long[]> input = new ArrayList<>();
-    for (long i = 0; i < 32; i++) {
-      if (input.isEmpty()) {
-        input.add(new long[]{i});
-      } else {
-        final long[] prev = input.get(input.size() - 1);
-        final long[] curr = Arrays.copyOf(prev, prev.length + 1);
-        curr[prev.length] = i;
-        input.add(curr);
-      }
-    }
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
-    // generate a supplier for all algorithm types
-    final List<Supplier<?>[]> algorithms = new ArrayList<>();
-    // no salt, no custom alphabet, no minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "NoSalt|NoAlphabet|NoMinLength",
-        Hashids::getInstance,
-        () -> getJsAlgorithm(null, null, 0)
-    });
-    // with salt, no custom alphabet, no minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "Salt|NoAlphabet|NoMinLength",
-        () -> Hashids.newInstance("my awesome salt"),
-        () -> getJsAlgorithm("my awesome salt", null, 0)
-    });
-    // no salt, with custom alphabet, no minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "NoSalt|Alphabet|NoMinLength",
-        () -> Hashids.newInstance("", "1234567890abcdef"),
-        () -> getJsAlgorithm(null, "1234567890abcdef", 0)
-    });
-    // no salt, no custom alphabet, with minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "NoSalt|NoAlphabet|MinLength",
-        () -> Hashids.newInstance(new char[0], Hashids.DEFAULT_ALPHABET, 32),
-        () -> getJsAlgorithm(null, null, 32)
-    });
-    // with salt, with custom alphabet, no minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "Salt|Alphabet|NoMinLength",
-        () -> Hashids.newInstance("my awesome salt", "1234567890abcdef"),
-        () -> getJsAlgorithm("my awesome salt", "1234567890abcdef", 0)
-    });
-    // no salt, with custom alphabet, with minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "NoSalt|Alphabet|MinLength",
-        () -> Hashids.newInstance("", "1234567890abcdef", 32),
-        () -> getJsAlgorithm(null, "1234567890abcdef", 32)
-    });
-    // with salt, no custom alphabet, with minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "Salt|NoAlphabet|MinLength",
-        () -> Hashids.newInstance("my awesome salt".toCharArray(), Hashids.DEFAULT_ALPHABET, 32),
-        () -> getJsAlgorithm("my awesome salt", null, 32)
-    });
-    // with salt, with custom alphabet, with minLength
-    algorithms.add(new Supplier<?>[]{
-        () -> "Salt|Alphabet|MinLength",
-        () -> Hashids.newInstance("my awesome salt", "1234567890abcdef", 32),
-        () -> getJsAlgorithm("my awesome salt", "1234567890abcdef", 32)
-    });
-
-    // generate the test input for each hash algorithm and test input
-    return algorithms.stream()
-        .flatMap(ha -> input.stream().map(ti -> new Object[]{
-            // name
-            String.format("algorithm(%s) with input(%s)", ha[0].get(), Arrays.toString(ti)),
-            // algorithm, jsAlgorithm, input
-            ha[1], ha[2], ti
-        }))
-        .collect(Collectors.toList());
-  }
-
-  @SuppressWarnings("unused")
-  public HashidsTest(final String name, final Supplier<Hashids> algorithm,
-      final Supplier<JsHashids> jsAlgorithm, final long[] input) {
-    super(algorithm, jsAlgorithm, input);
+  @Test
+  public void nullInput() {
+    assertThat(Hashids.getInstance().encode((long[]) null), nullValue());
+    assertThat(Hashids.getInstance().encodeHex(null), nullValue());
+    assertThat(Hashids.getInstance().decode(null), nullValue());
+    assertThat(Hashids.getInstance().decodeHex(null), nullValue());
   }
 
   @Test
-  public void runTest() {
-    final String encoded = algorithm.encode(input);
-    assertThat("encoding mismatch", encoded, equalTo(jsAlgorithm.encode(input)));
-    final long[] original = algorithm.decode(encoded);
-    assertThat(original, equalTo(input));
+  public void negativeInput() {
+    thrown.expect(IllegalArgumentException.class);
+    thrown.expectMessage("invalid number: -1");
+    Hashids.getInstance().encode(-1);
+  }
+
+  @Test
+  public void invalidAlphabetLength() {
+    thrown.expect(IllegalArgumentException.class);
+    thrown.expectMessage("alphabet must contain at least 16 unique characters: 6");
+    Hashids.newInstance("salt", "123456");
+  }
+
+  @Test
+  public void alphabetWithSpaces() {
+    thrown.expect(IllegalArgumentException.class);
+    thrown.expectMessage("alphabet must not contain spaces: index 1");
+    Hashids.newInstance("salt", "1 234567890abcdefg");
+  }
+
+  @Test
+  public void hexEncodeDecode() {
+    final Hashids hashids = Hashids.newInstance("my awesome salt");
+    final String encoded1 = hashids.encodeHex("507f1f77bcf86cd799439011");
+    final String encoded2 = hashids.encodeHex("0x507f1f77bcf86cd799439011");
+    final String encoded3 = hashids.encodeHex("0X507f1f77bcf86cd799439011");
+    assertThat(encoded1, equalTo(encoded2));
+    assertThat(encoded1, equalTo(encoded3));
+    assertThat(encoded1, equalTo("R2qnd2vkOJTXm7XV7yq4"));
+    final String decoded = hashids.decodeHex(encoded1);
+    assertThat(decoded, equalTo("507f1f77bcf86cd799439011"));
   }
 }

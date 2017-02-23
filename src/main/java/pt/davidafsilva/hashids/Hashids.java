@@ -264,6 +264,10 @@ public class Hashids {
    * @throws IllegalArgumentException if any of the numbers is not supported
    */
   public String encodeHex(final String hexNumbers) {
+    if (hexNumbers == null) {
+      return null;
+    }
+
     // remove the prefix, if present
     final String hex = hexNumbers.startsWith("0x") || hexNumbers.startsWith("0X") ?
         hexNumbers.substring(2) : hexNumbers;
@@ -385,6 +389,10 @@ public class Hashids {
    * @throws IllegalArgumentException if the hash is invalid.
    */
   public String decodeHex(final String hash) {
+    if (hash == null) {
+      return null;
+    }
+
     final StringBuilder sb = new StringBuilder();
     Arrays.stream(decode(hash))
         .mapToObj(Long::toHexString)
