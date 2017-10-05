@@ -517,8 +517,9 @@ public class Hashids {
                 Collectors.reducing(null, (a, b) -> a == null ? b : a))));
 
     for (int i = 0; i < hash.length; ++i) {
-      number += alphabetMapping.get(hash[i]) *
-          (long) Math.pow(alphabet.length, hash.length - i - 1);
+      number += alphabetMapping.computeIfAbsent(hash[i], k -> {
+        throw new IllegalArgumentException("Invalid alphabet for hash");
+      }) * (long) Math.pow(alphabet.length, hash.length - i - 1);
     }
 
     return number;
