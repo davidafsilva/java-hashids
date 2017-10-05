@@ -1,14 +1,18 @@
 plugins {
     id 'com.github.kt3k.coveralls' version '2.6.3'
+    id "com.jfrog.bintray" version "1.7.3"
 }
 apply plugin: 'java'
 apply plugin: "jacoco"
+apply plugin: 'idea'
+apply plugin: 'maven-publish'
 
 group 'pt.davidafsilva.hashids'
-version '0.0.1-SNAPSHOT'
+version '1.0.0'
 
 repositories {
     mavenCentral()
+    jcenter()
 }
 
 dependencies {
@@ -19,8 +23,101 @@ compileJava {
     sourceCompatibility = 1.8
 }
 
+jar {
+    manifest.attributes(
+            "Name": rootProject.name,
+            "Implementation-Title": rootProject.name,
+            "Implementation-Version": version,
+            "Implementation-Vendor": "David Silva"
+    )
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+javadoc {
+    source = sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
 jacocoTestReport {
     reports {
         xml.enabled = true
+    }
+}
+
+// Maven publishing support
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+            pom.withXml {
+                Node parent = asNode()
+
+                // basic information
+                parent.appendNode('name', project.name)
+                parent.appendNode('description', project.description)
+                parent.appendNode('url', 'https://github.com/davidafsilva/java-hashids')
+
+                // license
+                def licensesNode = new Node(parent, 'licenses')
+                def licenseNode = new Node(licensesNode, 'license')
+                licenseNode.appendNode("name", "MIT License")
+                licenseNode.appendNode("url", "https://opensource.org/licenses/MIT")
+
+                // developer
+                def developersNode = new Node(parent, 'developers')
+                def developerNode = new Node(developersNode, 'developer')
+                developerNode.appendNode('id', 'davidafsilva')
+                developerNode.appendNode('name', 'David Silva')
+                developerNode.appendNode('email', 'david@davidafsilva.pt')
+                developerNode.appendNode('organization', 'GitHub')
+                developerNode.appendNode('organizationUrl', 'https://github.com/davidafsilva/')
+
+                // scm
+                def scmNode = new Node(parent, 'scm')
+                scmNode.appendNode('connection', 'scm:git:git://github.com/davidafsilva/java-hashids.git')
+                scmNode.appendNode('developerConnection', 'scm:git:git://github.com/davidafsilva/java-hashids.git')
+                scmNode.appendNode('url', 'https://github.com/davidafsilva/java-hashids')
+            }
+        }
+    }
+}
+
+// bintray configuration
+bintray {
+    user = 'davidafsilva'
+    key = System.getenv('BINTRAY_TOKEN')
+    publications = ['mavenJava']
+    pkg {
+        repo = "maven"
+        name = project.name
+        version {
+            name = project.version
+            desc = project.name + " version " + project.version
+            vcsTag = project.name + "-" + project.version
+            publish = true
+            gpg {
+                sign = true
+                passphrase = System.getenv('PGP_KEY_PASSWD')
+            }
+            //mavenCentralSync {
+            //    user = System.getenv('MVN_CENTRAL_USER_TOKEN')
+            //    password = System.getenv('MVN_CENTRAL_PASSWD_TOKEN')
+            //}
+        }
     }
 }
