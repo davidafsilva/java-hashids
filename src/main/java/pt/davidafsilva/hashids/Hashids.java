@@ -15,13 +15,13 @@ import java.util.stream.LongStream;
 /**
  * Implementation of the <a href="http://hashids.org/">Hashids</a> protocol.
  * The algorithm has the following properties:
- * <li>
+ * <ul>
  * <li>Generation of short, unique, case-sensitive and non-sequential hashes</li>
  * <li>Hashes of natural numbers</li>
  * <li>Additional entropy through salt usage</li>
  * <li>Configurable hash size</li>
  * <li>Deterministic hash computation given the same input/parametrization</li>
- * </li>
+ * </ul>
  *
  * The underlying implementation shall be, in most cases, compatible/interchangeable with the
  * <a href="https://github.com/ivanakimov/hashids.js">standard implementation</a> provided by the
