@@ -13,13 +13,13 @@ Maven:
 <dependency>
   <groupId>pt.davidafsilva.hashids</groupId>
   <artifactId>java-hashids</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <type>pom</type>
 </dependency>
 ```
 Gradle:
 ```
-compile 'pt.davidafsilva.hashids:java-hashids:1.0.0'
+compile 'pt.davidafsilva.hashids:java-hashids:1.0.1'
 ```
 
 ## Usage
