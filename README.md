@@ -4,6 +4,22 @@ Implementation of the [Hashids](http://hashids.org) hashing protocol, which defi
 The underlying implementation is compatible/interchangeable with the [JavaScript implementation](https://github.com/ivanakimov/hashids.js) provided by the author of the protocol.
 Compatibility with other implementations is expected as long as they cope with the JavaScript implementation as well.
 
+## Import
+
+Add the jCenter repository and include the following coordinates:
+Maven:
+```xml
+<dependency>
+  <groupId>pt.davidafsilva.hashids</groupId>
+  <artifactId>java-hashids</artifactId>
+  <version>1.0.0</version>
+  <type>pom</type>
+</dependency>
+```
+Gradle:
+```
+pt.davidafsilva.hashids:java-hashids:1.0.0'`
+```
 
 ## Usage
 
