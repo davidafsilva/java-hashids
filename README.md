@@ -7,6 +7,7 @@ Compatibility with other implementations is expected as long as they cope with t
 ## Import
 
 Add the jCenter repository and include the following coordinates:
+
 Maven:
 ```xml
 <dependency>
