@@ -18,7 +18,7 @@ Maven:
 ```
 Gradle:
 ```
-pt.davidafsilva.hashids:java-hashids:1.0.0'`
+pt.davidafsilva.hashids:java-hashids:1.0.0'
 ```
 
 ## Usage
